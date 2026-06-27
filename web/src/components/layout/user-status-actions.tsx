@@ -37,7 +37,7 @@ export function UserStatusActions({ variant = "default", onOpenShortcuts }: User
     return (
         <div className="inline-flex shrink-0 items-center gap-1">
             {username ? (
-                <span className="mr-1 flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600 dark:bg-stone-800 dark:text-stone-300" style={iconStyle}>
+                <span className="mr-1 flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" style={iconStyle}>
                     <UserCircle className="size-3.5" />
                     {username}
                 </span>

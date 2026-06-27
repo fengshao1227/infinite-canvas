@@ -1,35 +1,35 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
-const neutral = {
+const brand = {
     light: {
-        primary: "#171717",
-        primaryHover: "#000000",
+        primary: "#4f46e5",
+        primaryHover: "#4338ca",
         primaryText: "#ffffff",
-        menuBg: "#f5f5f5",
-        menuText: "#171717",
-        selectActiveBg: "#f5f5f5",
-        selectSelectedBg: "#f0f0f0",
-        selectText: "#171717",
-        tableSelectedBg: "rgba(17, 17, 17, 0.05)",
-        tableSelectedHoverBg: "rgba(17, 17, 17, 0.08)",
+        menuBg: "#eef2ff",
+        menuText: "#312e81",
+        selectActiveBg: "#eef2ff",
+        selectSelectedBg: "#e0e7ff",
+        selectText: "#312e81",
+        tableSelectedBg: "rgba(79, 70, 229, 0.06)",
+        tableSelectedHoverBg: "rgba(79, 70, 229, 0.10)",
     },
     dark: {
-        primary: "#fafafa",
-        primaryHover: "#ffffff",
-        primaryText: "#171717",
-        menuBg: "#262626",
-        menuText: "#fafafa",
-        selectActiveBg: "#262626",
-        selectSelectedBg: "#333333",
-        selectText: "#fafafa",
-        tableSelectedBg: "rgba(255, 255, 255, 0.08)",
-        tableSelectedHoverBg: "rgba(255, 255, 255, 0.12)",
+        primary: "#818cf8",
+        primaryHover: "#a5b4fc",
+        primaryText: "#1e1b4b",
+        menuBg: "#1e1b4b",
+        menuText: "#e0e7ff",
+        selectActiveBg: "#1e1b4b",
+        selectSelectedBg: "#312e81",
+        selectText: "#e0e7ff",
+        tableSelectedBg: "rgba(129, 140, 248, 0.10)",
+        tableSelectedHoverBg: "rgba(129, 140, 248, 0.15)",
     },
 };
 
 export function getAntThemeConfig(dark: boolean): ThemeConfig {
-    const color = dark ? neutral.dark : neutral.light;
+    const color = dark ? brand.dark : brand.light;
 
     return {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -41,19 +41,20 @@ export function getAntThemeConfig(dark: boolean): ThemeConfig {
             colorLinkHover: color.primaryHover,
             colorLinkActive: color.primary,
             colorTextLightSolid: color.primaryText,
+            borderRadius: 8,
         },
         components: {
             Button: {
-                primaryShadow: "none",
+                primaryShadow: "0 1px 2px 0 rgba(79, 70, 229, 0.15)",
             },
             Menu: {
                 itemActiveBg: color.menuBg,
                 itemHoverBg: color.menuBg,
                 itemSelectedBg: color.menuBg,
                 itemSelectedColor: color.menuText,
-                darkItemHoverBg: neutral.dark.menuBg,
-                darkItemSelectedBg: neutral.dark.menuBg,
-                darkItemSelectedColor: neutral.dark.menuText,
+                darkItemHoverBg: brand.dark.menuBg,
+                darkItemSelectedBg: brand.dark.menuBg,
+                darkItemSelectedColor: brand.dark.menuText,
             },
             Select: {
                 optionActiveBg: color.selectActiveBg,

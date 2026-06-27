@@ -40,8 +40,8 @@ export default function LoginPage() {
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 dark:from-stone-950 dark:to-stone-900">
             <div className="w-full max-w-sm">
                 <div className="mb-8 text-center">
-                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-stone-900 shadow-lg dark:bg-stone-100">
-                        <span className="text-2xl font-bold text-white dark:text-stone-900">AI</span>
+                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-200 dark:bg-indigo-500 dark:shadow-indigo-950">
+                        <span className="text-2xl font-bold text-white">AI</span>
                     </div>
                     <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">AI Studio</h1>
                     <p className="mt-1 text-sm text-stone-500">登录你的账号</p>
