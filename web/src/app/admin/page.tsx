@@ -210,7 +210,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     const modelOptions = config.models.map((m) => ({ label: modelOptionLabel(config, m), value: m }));
 
     return (
-        <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-950" style={{ position: "fixed", inset: 0, overflowY: "auto" }}>
             <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/80 px-6 py-4 backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
                 <div className="mx-auto flex max-w-4xl items-center justify-between">
                     <div>
