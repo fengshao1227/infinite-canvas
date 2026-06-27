@@ -6,6 +6,11 @@ import { Button, Card, Tag } from "antd";
 
 import { formatPromptDate, type Prompt } from "@/services/api/prompts";
 
+function proxyUrl(url: string) {
+    if (!url || url.startsWith("/") || url.startsWith("data:")) return url;
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 export function PromptCard({
     item,
     onOpen,
@@ -23,15 +28,22 @@ export function PromptCard({
     actionType?: "text" | "primary";
     extraAction?: ReactNode;
 }) {
+    const cover = proxyUrl(item.coverUrl);
     return (
         <Card
             hoverable
             className="overflow-hidden"
             styles={{ body: { padding: 0 } }}
             cover={
-                <button type="button" className="block w-full text-left" onClick={onOpen}>
-                    <img src={item.coverUrl} alt={item.title} className="aspect-[4/3] w-full object-cover" />
-                </button>
+                cover ? (
+                    <button type="button" className="block w-full text-left" onClick={onOpen}>
+                        <img src={cover} alt={item.title} className="aspect-[4/3] w-full object-cover bg-stone-100 dark:bg-stone-800" />
+                    </button>
+                ) : (
+                    <button type="button" className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-indigo-50 to-stone-100 text-2xl font-bold text-indigo-300 dark:from-indigo-950/30 dark:to-stone-800 dark:text-indigo-700" onClick={onOpen}>
+                        {item.title.slice(0, 2)}
+                    </button>
+                )
             }
         >
             <button type="button" className="block w-full text-left" onClick={onOpen}>
