@@ -71,6 +71,11 @@ type ImageApiResponse = {
     error?: { message?: string };
     code?: number;
     msg?: string;
+    id?: string;
+    object?: string;
+    status?: string;
+    progress?: number;
+    results?: string[];
 };
 type GeminiPart = {
     text?: string;
@@ -90,7 +95,50 @@ type GeminiPayload = {
     promptFeedback?: { blockReason?: string };
 };
 type GeminiStreamState = { buffer: string; text: string; toolCalls: ResponseToolCall[]; error?: string };
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal; onProgress?: (progress: number) => void };
+
+const ASYNC_POLL_INTERVAL = 3000;
+const ASYNC_POLL_MAX_ATTEMPTS = 200;
+
+function isAsyncTaskResponse(payload: ImageApiResponse): payload is ImageApiResponse & { id: string; status: string } {
+    return payload.object === "image.generation.task" && typeof payload.id === "string" && typeof payload.status === "string";
+}
+
+function proxyImageUrl(url: string): string {
+    if (url.startsWith("data:") || url.startsWith("/")) return url;
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
+async function pollImageTask(config: AiConfig, taskId: string, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string }>> {
+    for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt++) {
+        options?.signal?.throwIfAborted();
+        await new Promise((resolve) => setTimeout(resolve, ASYNC_POLL_INTERVAL));
+        options?.signal?.throwIfAborted();
+        const response = await axios.get<ImageApiResponse>(aiApiUrl(config, `/tasks/${taskId}`), {
+            headers: aiHeaders(config, "application/json"),
+            signal: options?.signal,
+        });
+        const data = response.data;
+        if (data.error) throw new Error(typeof data.error === "string" ? data.error : data.error.message || "任务失败");
+        if (data.status === "failed") throw new Error("图片生成任务失败");
+        if (typeof data.progress === "number") options?.onProgress?.(data.progress);
+        if (data.status === "completed" && data.results?.length) {
+            return data.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url) }));
+        }
+    }
+    throw new Error("图片生成任务超时");
+}
+
+async function resolveImageResponse(config: AiConfig, payload: ImageApiResponse, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string }>> {
+    if (isAsyncTaskResponse(payload)) {
+        if (payload.status === "completed" && payload.results?.length) {
+            return payload.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url) }));
+        }
+        if (payload.status === "failed") throw new Error("图片生成任务失败");
+        return pollImageTask(config, payload.id, options);
+    }
+    return parseImagePayload(payload);
+}
 
 const QUALITY_BASE: Record<string, number> = {
     low: 1024,
@@ -636,8 +684,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 signal: options?.signal,
             },
         );
-        const images = parseImagePayload(response.data);
-        return images;
+        return await resolveImageResponse(requestConfig, response.data, options);
     } catch (error) {
         throw new Error(readAxiosError(error, "请求失败"));
     }
@@ -675,8 +722,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
 
     try {
         const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal });
-        const images = parseImagePayload(response.data);
-        return images;
+        return await resolveImageResponse(requestConfig, response.data, options);
     } catch (error) {
         throw new Error(readAxiosError(error, "请求失败"));
     }
