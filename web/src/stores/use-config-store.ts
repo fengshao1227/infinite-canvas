@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
-export type ApiCallFormat = "openai" | "gemini";
+export type ApiCallFormat = "openai" | "gemini" | "velokey";
 
 export type ModelChannel = {
     id: string;
@@ -67,14 +67,14 @@ export const defaultConfig: AiConfig = {
     channelMode: "local",
     baseUrl: PROXY_BASE_URL,
     apiKey: "proxy",
-    apiFormat: "openai",
+    apiFormat: "velokey",
     channels: [
         {
             id: "default",
             name: "默认渠道",
             baseUrl: PROXY_BASE_URL,
             apiKey: "proxy",
-            apiFormat: "openai",
+            apiFormat: "velokey",
             models: ["gpt-image-2", "grok-imagine-video", "gpt-5.5", "gpt-4o-mini-tts"],
         },
     ],
@@ -357,11 +357,15 @@ function normalizeChannels(config: AiConfig) {
 }
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
-    return apiFormat === "gemini" ? GEMINI_BASE_URL : OPENAI_BASE_URL;
+    if (apiFormat === "gemini") return GEMINI_BASE_URL;
+    if (apiFormat === "velokey") return PROXY_BASE_URL;
+    return OPENAI_BASE_URL;
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" ? "gemini" : "openai";
+    if (apiFormat === "gemini") return "gemini";
+    if (apiFormat === "velokey") return "velokey";
+    return "openai";
 }
 
 function uniqueRawModels(models: string[]) {

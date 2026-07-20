@@ -37,6 +37,7 @@ const MODEL_GROUPS: ModelGroup[] = [
 const API_FORMAT_OPTIONS: Array<{ label: string; value: ApiCallFormat }> = [
     { label: "OpenAI", value: "openai" },
     { label: "Gemini", value: "gemini" },
+    { label: "Velokey", value: "velokey" },
 ];
 
 function uniqueModels(models: string[]) {
@@ -244,7 +245,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                                 <div className="mb-3 flex items-center justify-between">
                                     <div>
                                         <span className="font-medium text-stone-900 dark:text-stone-100">{channel.name || "未命名"}</span>
-                                        <span className="ml-2 text-xs text-stone-500">{channel.apiFormat === "gemini" ? "Gemini" : "OpenAI"} · {channel.models.length} 个模型</span>
+                                        <span className="ml-2 text-xs text-stone-500">{channel.apiFormat === "gemini" ? "Gemini" : channel.apiFormat === "velokey" ? "Velokey" : "OpenAI"} · {channel.models.length} 个模型</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button size="small" loading={loadingChannelId === channel.id} onClick={() => void refreshChannelModels(channel)}>

@@ -732,9 +732,33 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
-    const imageUrls = (await Promise.all(references.map(async (ref) => resolveImageRef(ref)))).filter(Boolean);
-    if (!imageUrls.length) throw new Error("参考图读取失败，请换一张图片或重新上传");
 
+    if (requestConfig.apiFormat === "velokey") {
+        const imageUrls = (await Promise.all(references.map(async (ref) => resolveImageRef(ref)))).filter(Boolean);
+        if (!imageUrls.length) throw new Error("参考图读取失败，请换一张图片或重新上传");
+        try {
+            const response = await axios.post<ImageApiResponse>(
+                aiApiUrl(requestConfig, "/images/generations"),
+                {
+                    model: requestConfig.model,
+                    prompt: withSystemPrompt(requestConfig, requestPrompt),
+                    n,
+                    ...(quality ? { quality } : {}),
+                    ...(requestSize ? { size: requestSize } : {}),
+                    image: imageUrls.length === 1 ? imageUrls[0] : imageUrls,
+                },
+                {
+                    headers: aiHeaders(requestConfig, "application/json"),
+                    signal: options?.signal,
+                },
+            );
+            return await resolveImageResponse(requestConfig, response.data, options);
+        } catch (error) {
+            throw new Error(readAxiosError(error, "请求失败"));
+        }
+    }
+
+    const imageDataUrls = await Promise.all(references.map(async (ref) => imageToDataUrl(ref)));
     try {
         const response = await axios.post<ImageApiResponse>(
             aiApiUrl(requestConfig, "/images/generations"),
@@ -744,7 +768,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 n,
                 ...(quality ? { quality } : {}),
                 ...(requestSize ? { size: requestSize } : {}),
-                image: imageUrls.length === 1 ? imageUrls[0] : imageUrls,
+                response_format: "b64_json",
+                output_format: IMAGE_OUTPUT_FORMAT,
+                image: imageDataUrls.length === 1 ? imageDataUrls[0] : imageDataUrls,
             },
             {
                 headers: aiHeaders(requestConfig, "application/json"),
