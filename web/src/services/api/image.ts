@@ -695,6 +695,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
+    const isVelokey = requestConfig.apiFormat === "velokey";
     try {
         const response = await axios.post<ImageApiResponse>(
             aiApiUrl(requestConfig, "/images/generations"),
@@ -704,8 +705,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 n,
                 ...(quality ? { quality } : {}),
                 ...(requestSize ? { size: requestSize } : {}),
-                response_format: "b64_json",
-                output_format: IMAGE_OUTPUT_FORMAT,
+                ...(!isVelokey ? { response_format: "b64_json", output_format: IMAGE_OUTPUT_FORMAT } : {}),
             },
             {
                 headers: aiHeaders(requestConfig, "application/json"),
