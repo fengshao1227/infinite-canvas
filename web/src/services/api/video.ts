@@ -51,7 +51,6 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], videoReferences: ReferenceVideo[] = [], audioReferences: ReferenceAudio[] = [], options?: RequestOptions): Promise<VideoGenerationTask> {
     const selectedModel = (config.model || config.videoModel).trim();
     const requestConfig = resolveModelRequestConfig(config, selectedModel);
-    console.log("[VIDEO DEBUG] model:", requestConfig.model, "baseUrl:", requestConfig.baseUrl, "prompt:", prompt?.slice(0, 50), "refs:", references.length, "isSeedance:", isSeedanceVideoConfig(requestConfig));
     assertVideoConfig(requestConfig, requestConfig.model);
     if (isSeedanceVideoConfig(requestConfig)) {
         return createSeedanceTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
@@ -91,9 +90,8 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
         body.image_start = imageUrls[0];
         body.image_urls = imageUrls.slice(1);
     }
-    const url = aiApiUrl(config, "/videos/generations");
-    console.log("[VIDEO DEBUG] url:", url, "body:", JSON.stringify({ ...body, image_start: body.image_start ? (String(body.image_start).slice(0, 80) + "...") : undefined }));
     try {
+        const url = aiApiUrl(config, "/videos/generations");
         const response = (await axios.post<VideoTaskResponse>(url, body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data;
         const taskId = response.id;
         if (!taskId) throw new Error("视频接口没有返回任务 ID");
