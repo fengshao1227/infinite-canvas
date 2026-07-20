@@ -165,7 +165,16 @@ async function resolveImageResponse(config: AiConfig, payload: ImageApiResponse,
         if (payload.status === "failed") throw new Error("图片生成任务失败");
         return pollImageTask(config, payload.id, options);
     }
-    return parseImagePayload(payload);
+    const results = parseImagePayload(payload);
+    return Promise.all(results.map(async (result) => {
+        if (!result.dataUrl.startsWith("data:")) return result;
+        try {
+            const sourceUrl = await uploadToBucket(result.dataUrl);
+            return { ...result, dataUrl: proxyImageUrl(sourceUrl), sourceUrl };
+        } catch {
+            return result;
+        }
+    }));
 }
 
 const QUALITY_BASE: Record<string, number> = {
