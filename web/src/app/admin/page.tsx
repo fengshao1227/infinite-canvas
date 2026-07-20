@@ -44,6 +44,11 @@ function uniqueModels(models: string[]) {
     return Array.from(new Set(models.map((m) => m.trim()).filter(Boolean)));
 }
 
+function syncChannelsToServer(channels: ModelChannel[]) {
+    const payload = channels.map((ch) => ({ id: ch.id, baseUrl: ch.baseUrl, apiKey: ch.apiKey }));
+    fetch("/api/admin/channels", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+}
+
 function withChannels(config: AiConfig, channels: ModelChannel[]): AiConfig {
     const models = modelOptionsFromChannels(channels);
     return {
@@ -148,7 +153,10 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         (Object.keys(next) as Array<keyof AiConfig>).forEach((key) => updateConfig(key, next[key]));
     };
 
-    const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
+    const updateChannels = (channels: ModelChannel[]) => {
+        saveConfig(withChannels(config, channels));
+        syncChannelsToServer(channels);
+    };
 
     const updateChannel = (id: string, patch: Partial<ModelChannel>) => {
         updateChannels(config.channels.map((ch) => (ch.id === id ? { ...ch, ...patch, models: patch.models ? uniqueModels(patch.models) : ch.models } : ch)));

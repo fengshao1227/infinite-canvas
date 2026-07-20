@@ -1,16 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { readFileSync } from "node:fs";
 
 const AI_BASE_URL = (process.env.AI_BASE_URL || "https://api.openai.com").replace(/\/+$/, "");
 const AI_API_KEY = process.env.AI_API_KEY || "";
+const CHANNELS_FILE = process.env.DATA_DIR ? `${process.env.DATA_DIR}/channels.json` : "/app/data/channels.json";
 
 type ChannelConfig = { id: string; baseUrl: string; apiKey: string };
-const AI_CHANNELS: ChannelConfig[] = (() => {
-    try { return JSON.parse(process.env.AI_CHANNELS || "[]"); } catch { return []; }
-})();
+
+function loadChannels(): ChannelConfig[] {
+    try { return JSON.parse(readFileSync(CHANNELS_FILE, "utf-8")); } catch { return []; }
+}
 
 function resolveChannel(channelId: string | null): { baseUrl: string; apiKey: string } {
     if (channelId && channelId !== "default") {
-        const ch = AI_CHANNELS.find((c) => c.id === channelId);
+        const ch = loadChannels().find((c) => c.id === channelId);
         if (ch) return { baseUrl: ch.baseUrl.replace(/\/+$/, ""), apiKey: ch.apiKey };
     }
     return { baseUrl: AI_BASE_URL, apiKey: AI_API_KEY };

@@ -89,15 +89,18 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     const referenceAudios = selectedInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
 
     if (!hasToken) {
+        const allImages = inputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
+        const allVideos = inputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
+        const allAudios = inputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
             prompt,
-            referenceImages: [],
-            referenceVideos: [],
-            referenceAudios: [],
-            textCount: 0,
-            imageCount: 0,
-            videoCount: 0,
-            audioCount: 0,
+            referenceImages: allImages,
+            referenceVideos: allVideos,
+            referenceAudios: allAudios,
+            textCount: inputs.filter((input) => input.type === "text").length,
+            imageCount: allImages.length,
+            videoCount: allVideos.length,
+            audioCount: allAudios.length,
         };
     }
 
