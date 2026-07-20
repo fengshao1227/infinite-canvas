@@ -159,15 +159,12 @@ function generationLabel(type: NodeGenerationInput["type"], index: number) {
 
 function readReferenceImage(node: CanvasNodeData): ReferenceImage | null {
     if (node.type !== CanvasNodeType.Image || !node.metadata?.content) return null;
-    const content = node.metadata.content;
-    const proxyPrefix = "/api/image-proxy?url=";
-    const cdnUrl = content.startsWith(proxyPrefix) ? decodeURIComponent(content.slice(proxyPrefix.length)) : undefined;
     return {
         id: node.id,
         name: `${node.title || node.id}.png`,
         type: node.metadata.mimeType || "image/png",
-        dataUrl: content,
-        url: cdnUrl,
+        dataUrl: node.metadata.content,
+        url: node.metadata.sourceUrl,
         storageKey: node.metadata.storageKey,
     };
 }

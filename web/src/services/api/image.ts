@@ -135,16 +135,16 @@ async function pollImageTask(config: AiConfig, taskId: string, options?: Request
         if (data.status === "failed") throw new Error("图片生成任务失败");
         if (typeof data.progress === "number") options?.onProgress?.(data.progress);
         if (data.status === "completed" && data.results?.length) {
-            return data.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url) }));
+            return data.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url), sourceUrl: url }));
         }
     }
     throw new Error("图片生成任务超时");
 }
 
-async function resolveImageResponse(config: AiConfig, payload: ImageApiResponse, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string }>> {
+async function resolveImageResponse(config: AiConfig, payload: ImageApiResponse, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string; sourceUrl?: string }>> {
     if (isAsyncTaskResponse(payload)) {
         if (payload.status === "completed" && payload.results?.length) {
-            return payload.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url) }));
+            return payload.results.map((url) => ({ id: nanoid(), dataUrl: proxyImageUrl(url), sourceUrl: url }));
         }
         if (payload.status === "failed") throw new Error("图片生成任务失败");
         return pollImageTask(config, payload.id, options);
