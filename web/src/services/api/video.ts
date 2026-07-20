@@ -29,9 +29,11 @@ function aiApiUrl(config: AiConfig, path: string) {
 }
 
 function aiHeaders(config: AiConfig, contentType?: string) {
+    const channelId = (config as Record<string, unknown>).channelId as string | undefined;
     return {
         Authorization: `Bearer ${config.apiKey}`,
         ...(contentType ? { "Content-Type": contentType } : {}),
+        ...(channelId ? { "X-Channel-Id": channelId } : {}),
     };
 }
 

@@ -3,17 +3,33 @@ import { type NextRequest, NextResponse } from "next/server";
 const AI_BASE_URL = (process.env.AI_BASE_URL || "https://api.openai.com").replace(/\/+$/, "");
 const AI_API_KEY = process.env.AI_API_KEY || "";
 
-function buildUpstreamUrl(segments: string[]) {
-    const base = AI_BASE_URL.toLowerCase().endsWith("/v1") ? AI_BASE_URL : `${AI_BASE_URL}/v1`;
+type ChannelConfig = { id: string; baseUrl: string; apiKey: string };
+const AI_CHANNELS: ChannelConfig[] = (() => {
+    try { return JSON.parse(process.env.AI_CHANNELS || "[]"); } catch { return []; }
+})();
+
+function resolveChannel(channelId: string | null): { baseUrl: string; apiKey: string } {
+    if (channelId && channelId !== "default") {
+        const ch = AI_CHANNELS.find((c) => c.id === channelId);
+        if (ch) return { baseUrl: ch.baseUrl.replace(/\/+$/, ""), apiKey: ch.apiKey };
+    }
+    return { baseUrl: AI_BASE_URL, apiKey: AI_API_KEY };
+}
+
+function buildUpstreamUrl(segments: string[], baseUrl: string) {
+    const lower = baseUrl.toLowerCase();
+    const base = lower.endsWith("/v1") || lower.endsWith("/api/v3") || lower.endsWith("/api/plan/v3") ? baseUrl : `${baseUrl}/v1`;
     return `${base}/${segments.join("/")}`;
 }
 
 async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     const { path } = await params;
-    const url = buildUpstreamUrl(path);
+    const channelId = request.headers.get("x-channel-id");
+    const { baseUrl, apiKey } = resolveChannel(channelId);
+    const url = buildUpstreamUrl(path, baseUrl);
 
     const headers: Record<string, string> = {
-        Authorization: `Bearer ${AI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
     };
 
     const contentType = request.headers.get("content-type");
