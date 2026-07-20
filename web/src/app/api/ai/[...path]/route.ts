@@ -22,9 +22,7 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
     const init: RequestInit = { method: request.method, headers };
 
     if (request.method !== "GET" && request.method !== "HEAD") {
-        init.body = request.body;
-        // @ts-expect-error -- Node fetch supports duplex streaming
-        init.duplex = "half";
+        init.body = await request.arrayBuffer();
     }
 
     let upstream: Response;

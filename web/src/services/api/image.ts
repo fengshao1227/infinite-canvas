@@ -109,6 +109,18 @@ function proxyImageUrl(url: string): string {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
+function extractCdnUrl(ref: { url?: string; dataUrl?: string }): string | null {
+    if (ref.url && /^https?:\/\//i.test(ref.url)) return ref.url;
+    const proxyPrefix = "/api/image-proxy?url=";
+    if (ref.dataUrl?.startsWith(proxyPrefix)) return decodeURIComponent(ref.dataUrl.slice(proxyPrefix.length));
+    if (ref.dataUrl && /^https?:\/\//i.test(ref.dataUrl)) return ref.dataUrl;
+    return null;
+}
+
+async function resolveImageRef(ref: { url?: string; dataUrl?: string; storageKey?: string }): Promise<string> {
+    return extractCdnUrl(ref) || await imageToDataUrl(ref);
+}
+
 async function pollImageTask(config: AiConfig, taskId: string, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string }>> {
     for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt++) {
         options?.signal?.throwIfAborted();
@@ -704,7 +716,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
-    const imageUrls = (await Promise.all(references.map(async (ref) => imageToDataUrl(ref)))).filter(Boolean);
+    const imageUrls = (await Promise.all(references.map(async (ref) => resolveImageRef(ref)))).filter(Boolean);
     if (!imageUrls.length) throw new Error("参考图读取失败，请换一张图片或重新上传");
 
     try {

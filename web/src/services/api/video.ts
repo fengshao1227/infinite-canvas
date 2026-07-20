@@ -314,10 +314,20 @@ function isPublicMediaUrl(value: string) {
 
 async function resolveReferenceUrl(image: ReferenceImage): Promise<string> {
     if (image.url && isPublicMediaUrl(image.url)) return image.url;
+    const cdnUrl = extractProxyCdnUrl(image.dataUrl);
+    if (cdnUrl) return cdnUrl;
     if (image.dataUrl && image.dataUrl.startsWith("data:")) return image.dataUrl;
     const dataUrl = await imageToDataUrl(image);
     if (!dataUrl) throw new Error("参考图读取失败，请换一张图片或重新上传");
     return dataUrl;
+}
+
+function extractProxyCdnUrl(dataUrl?: string): string | null {
+    if (!dataUrl) return null;
+    const proxyPrefix = "/api/image-proxy?url=";
+    if (dataUrl.startsWith(proxyPrefix)) return decodeURIComponent(dataUrl.slice(proxyPrefix.length));
+    if (/^https?:\/\//i.test(dataUrl)) return dataUrl;
+    return null;
 }
 
 function normalizeAspectRatio(size: string): string {
