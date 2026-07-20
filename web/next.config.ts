@@ -16,7 +16,6 @@ export default function nextConfig(phase: string): NextConfig {
     return {
         output: "standalone",
         allowedDevOrigins: isDev ? ["*.*.*.*"] : [],
-        serverBodyLimit: "50mb",
         typescript: {
             ignoreBuildErrors: true,
         },
