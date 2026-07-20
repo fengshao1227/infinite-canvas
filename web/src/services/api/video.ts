@@ -153,6 +153,8 @@ async function pollVelokeyVideoTask(config: AiConfig, task: VideoGenerationTask,
         if (data.status === "failed") return { status: "failed", error: data.fail_reason || "视频生成失败" };
         return { status: "pending" };
     } catch (error) {
+        if (axios.isCancel(error) || options?.signal?.aborted) throw error;
+        if (axios.isAxiosError(error) && error.response?.status && error.response.status >= 500) return { status: "pending" };
         throw new Error(readAxiosError(error, "视频任务查询失败"));
     }
 }

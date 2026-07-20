@@ -142,11 +142,17 @@ async function pollImageTask(config: AiConfig, taskId: string, options?: Request
         options?.signal?.throwIfAborted();
         await new Promise((resolve) => setTimeout(resolve, ASYNC_POLL_INTERVAL));
         options?.signal?.throwIfAborted();
-        const response = await axios.get<ImageApiResponse>(aiApiUrl(config, `/tasks/${taskId}`), {
-            headers: aiHeaders(config, "application/json"),
-            signal: options?.signal,
-        });
-        const data = response.data;
+        let data: ImageApiResponse;
+        try {
+            data = (await axios.get<ImageApiResponse>(aiApiUrl(config, `/tasks/${taskId}`), {
+                headers: aiHeaders(config, "application/json"),
+                signal: options?.signal,
+            })).data;
+        } catch (error) {
+            if (axios.isCancel(error) || options?.signal?.aborted) throw error;
+            if (axios.isAxiosError(error) && error.response?.status && error.response.status >= 500) continue;
+            throw error;
+        }
         if (data.error) throw new Error(typeof data.error === "string" ? data.error : data.error.message || "任务失败");
         if (data.status === "failed") throw new Error("图片生成任务失败");
         if (typeof data.progress === "number") options?.onProgress?.(data.progress);
