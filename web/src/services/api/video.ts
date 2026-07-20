@@ -317,9 +317,9 @@ async function resolveReferenceUrl(image: ReferenceImage): Promise<string> {
     if (image.url && isPublicMediaUrl(image.url)) return image.url;
     const cdnUrl = extractProxyCdnUrl(image.dataUrl);
     if (cdnUrl) return cdnUrl;
-    if (image.dataUrl && image.dataUrl.startsWith("data:")) return image.dataUrl;
-    const dataUrl = await imageToDataUrl(image);
+    const dataUrl = image.dataUrl?.startsWith("data:") ? image.dataUrl : await imageToDataUrl(image);
     if (!dataUrl) throw new Error("参考图读取失败，请换一张图片或重新上传");
+    if (dataUrl.startsWith("data:")) return uploadToBucket(dataUrl);
     return dataUrl;
 }
 
@@ -329,6 +329,17 @@ function extractProxyCdnUrl(dataUrl?: string): string | null {
     if (dataUrl.startsWith(proxyPrefix)) return decodeURIComponent(dataUrl.slice(proxyPrefix.length));
     if (/^https?:\/\//i.test(dataUrl)) return dataUrl;
     return null;
+}
+
+async function uploadToBucket(dataUrl: string): Promise<string> {
+    const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+    });
+    if (!response.ok) throw new Error("图片上传失败");
+    const data = await response.json();
+    return data.url;
 }
 
 function normalizeAspectRatio(size: string): string {

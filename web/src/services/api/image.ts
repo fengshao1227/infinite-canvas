@@ -117,8 +117,24 @@ function extractCdnUrl(ref: { url?: string; dataUrl?: string }): string | null {
     return null;
 }
 
+async function uploadToBucket(dataUrl: string): Promise<string> {
+    const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+    });
+    if (!response.ok) throw new Error("图片上传失败");
+    const data = await response.json();
+    return data.url;
+}
+
 async function resolveImageRef(ref: { url?: string; dataUrl?: string; storageKey?: string }): Promise<string> {
-    return extractCdnUrl(ref) || await imageToDataUrl(ref);
+    const cdn = extractCdnUrl(ref);
+    if (cdn) return cdn;
+    const dataUrl = await imageToDataUrl(ref);
+    if (!dataUrl) return "";
+    if (dataUrl.startsWith("data:")) return uploadToBucket(dataUrl);
+    return dataUrl;
 }
 
 async function pollImageTask(config: AiConfig, taskId: string, options?: RequestOptions): Promise<Array<{ id: string; dataUrl: string }>> {
