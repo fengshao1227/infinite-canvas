@@ -704,7 +704,8 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
-    const imageUrls = await Promise.all(references.map(async (ref) => imageToDataUrl(ref)));
+    const imageUrls = (await Promise.all(references.map(async (ref) => imageToDataUrl(ref)))).filter(Boolean);
+    if (!imageUrls.length) throw new Error("参考图读取失败，请换一张图片或重新上传");
 
     try {
         const response = await axios.post<ImageApiResponse>(
@@ -715,8 +716,6 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 n,
                 ...(quality ? { quality } : {}),
                 ...(requestSize ? { size: requestSize } : {}),
-                response_format: "b64_json",
-                output_format: IMAGE_OUTPUT_FORMAT,
                 image: imageUrls.length === 1 ? imageUrls[0] : imageUrls,
             },
             {

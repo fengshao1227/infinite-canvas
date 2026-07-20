@@ -1,6 +1,5 @@
 import axios from "axios";
 
-import { dataUrlToFile } from "@/lib/image-utils";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildSeedancePromptText, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
@@ -10,6 +9,7 @@ import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
 type VideoResponse = { id: string; status?: string; error?: { message?: string } };
 type ApiVideoResponse = VideoResponse | { code?: number; data?: VideoResponse | null; msg?: string };
+type VideoTaskResponse = { id?: string; status?: string; results?: string[]; fail_reason?: string; error?: { message?: string } };
 type SeedanceTask = {
     id: string;
     status?: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
@@ -74,19 +74,27 @@ export async function storeGeneratedVideo(result: VideoGenerationResult): Promis
 }
 
 async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<VideoGenerationTask> {
-    const body = new FormData();
-    body.append("model", modelOptionName(model));
-    body.append("prompt", prompt);
-    body.append("seconds", normalizeVideoSeconds(config.videoSeconds));
-    if (normalizeVideoSize(config.size)) body.append("size", normalizeVideoSize(config.size)!);
-    body.append("resolution_name", normalizeVideoResolution(config.vquality));
-    body.append("preset", "normal");
-    const files = await Promise.all(references.slice(0, 7).map(async (image) => dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) })));
-    files.forEach((file) => body.append("input_reference[]", file));
+    const imageUrls = await Promise.all(references.slice(0, 7).map(async (image) => resolveReferenceUrl(image)));
+    const body: Record<string, unknown> = {
+        model: modelOptionName(model),
+        prompt,
+        duration: Number(normalizeVideoSeconds(config.videoSeconds)),
+    };
+    const size = normalizeVideoSize(config.size);
+    if (size) body.aspect_ratio = normalizeAspectRatio(size);
+    const quality = normalizeVideoResolution(config.vquality);
+    if (quality) body.quality = quality;
+    if (imageUrls.length === 1) {
+        body.image_start = imageUrls[0];
+    } else if (imageUrls.length > 1) {
+        body.image_start = imageUrls[0];
+        body.image_urls = imageUrls.slice(1);
+    }
     try {
-        const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, "/videos"), body, { headers: aiHeaders(config), signal: options?.signal })).data);
-        if (!created.id) throw new Error("视频接口没有返回任务 ID");
-        return { id: created.id, provider: "openai", model };
+        const response = (await axios.post<VideoTaskResponse>(aiApiUrl(config, "/videos/generations"), body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data;
+        const taskId = response.id;
+        if (!taskId) throw new Error("视频接口没有返回任务 ID");
+        return { id: taskId, provider: "openai", model };
     } catch (error) {
         throw new Error(readAxiosError(error, "视频任务创建失败"));
     }
@@ -94,13 +102,13 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
-        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
-        if (video.status === "completed") {
-            const content = await axios.get<Blob>(aiApiUrl(config, `/videos/${task.id}/content`), { headers: aiHeaders(config), responseType: "blob", signal: options?.signal });
-            await assertVideoBlob(content.data);
-            return { status: "completed", result: { blob: content.data } };
+        const data = (await axios.get<VideoTaskResponse>(aiApiUrl(config, `/tasks/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data;
+        if (data.status === "completed") {
+            const url = data.results?.[0];
+            if (!url) return { status: "failed", error: "视频生成完成但没有返回 URL" };
+            return { status: "completed", result: await videoResultFromUrl(proxyUrl(url), options) };
         }
-        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: video.error?.message || "视频生成失败" };
+        if (data.status === "failed") return { status: "failed", error: data.fail_reason || "视频生成失败" };
         return { status: "pending" };
     } catch (error) {
         throw new Error(readAxiosError(error, "视频任务查询失败"));
@@ -302,6 +310,34 @@ async function assertVideoBlob(blob: Blob) {
 
 function isPublicMediaUrl(value: string) {
     return /^https?:\/\//i.test(value || "");
+}
+
+async function resolveReferenceUrl(image: ReferenceImage): Promise<string> {
+    if (image.url && isPublicMediaUrl(image.url)) return image.url;
+    if (image.dataUrl && image.dataUrl.startsWith("data:")) return image.dataUrl;
+    const dataUrl = await imageToDataUrl(image);
+    if (!dataUrl) throw new Error("参考图读取失败，请换一张图片或重新上传");
+    return dataUrl;
+}
+
+function normalizeAspectRatio(size: string): string {
+    if (size.includes(":")) return size;
+    const match = size.match(/^(\d+)x(\d+)$/);
+    if (!match) return "16:9";
+    const w = Number(match[1]);
+    const h = Number(match[2]);
+    if (w === h) return "1:1";
+    if (w > h) return `${w / gcd(w, h)}:${h / gcd(w, h)}`;
+    return `${w / gcd(w, h)}:${h / gcd(w, h)}`;
+}
+
+function gcd(a: number, b: number): number {
+    return b === 0 ? a : gcd(b, a % b);
+}
+
+function proxyUrl(url: string): string {
+    if (url.startsWith("data:") || url.startsWith("/") || url.startsWith("blob:")) return url;
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 function delay(ms: number, signal?: AbortSignal) {
